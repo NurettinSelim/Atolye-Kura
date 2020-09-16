@@ -146,6 +146,6 @@ def save_to_excel(grade_list: dict):
             sheet[f"B{num}"] = student.name
             sheet[f"C{num}"] = student.parent_name
             sheet[f"D{num}"] = student.parent_number
-            sheet[f"F{num}"] = student.robotic_course
+            sheet[f"F{num}"] = student.school
     timestr = time.strftime("%Y%m%d-%H%M%S")
     wb.save(f"sonuclar{timestr}.xlsx")
