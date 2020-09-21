@@ -16,6 +16,7 @@ class Student:
         self.grade = grade[:1]
         self.robotic_course = robotic_course
         self.student_facilities = student_facilities
+        self.isSpare = bool()
 
     def __str__(self):
         return f"{self.name} {self.grade}. Sınıf / {self.facility_note()}"
@@ -47,6 +48,8 @@ class Student:
         return note
 
     def to_text(self):
+        if self.isSpare:
+            return f"{self.name}(YEDEK)"
         return f"{self.name}"
 
 
@@ -93,9 +96,10 @@ def draw_students_from_excel(dosya_adi):
     hak_kazananlar = list()
 
     grade_list = basic_elimination(students)
-
+    hak = 20
+    yedek = 10
     for sinif in grade_list.keys():
-        sinif_kontenjanlari[sinif] = 16
+        sinif_kontenjanlari[sinif] = hak + yedek
 
     for grade, students in grade_list.items():
         students = sorted(students, key=lambda i: i.facility_note(), reverse=True)
@@ -107,31 +111,41 @@ def draw_students_from_excel(dosya_adi):
                 students.remove(student)
                 hak_kazananlar.append(student)
                 sinif_kontenjanlari[student.grade] -= 1
+        try:
+            last_student = students[sinif_kontenjanlari[grade] - 1]
+            after_last_student = students[sinif_kontenjanlari[grade]]
+            if last_student.facility_note() == after_last_student.facility_note():
+                i = sinif_kontenjanlari[grade] - 1
+                while last_student.facility_note() == students[i].facility_note():
+                    i -= 1
+                k = sinif_kontenjanlari[grade]
+                while last_student.facility_note() == students[k].facility_note():
+                    k += 1
 
-        last_student = students[sinif_kontenjanlari[grade] - 1]
-        after_last_student = students[sinif_kontenjanlari[grade]]
-        if last_student.facility_note() == after_last_student.facility_note():
-            i = sinif_kontenjanlari[grade] - 1
-            while last_student.facility_note() == students[i].facility_note():
-                i -= 1
-            k = sinif_kontenjanlari[grade]
-            while last_student.facility_note() == students[k].facility_note():
-                k += 1
-
-            sinif_kontenjanlari[grade] -= i + 1
-            hak_kazananlar.extend(students[:i + 1])
-            kura_listesi = list()
-            equal_note = last_student.facility_note()
-            for student in students[i + 1:k]:
-                if student.facility_note():
-                    kura_listesi.append(student)
-            hak_kazananlar.extend(sample(kura_listesi, k=sinif_kontenjanlari[grade]))
-        else:
-            hak_kazananlar.extend(students[:sinif_kontenjanlari[grade]])
-            sinif_kontenjanlari[grade] = 0
+                sinif_kontenjanlari[grade] -= i + 1
+                hak_kazananlar.extend(students[:i + 1])
+                kura_listesi = list()
+                for student in students[i + 1:k]:
+                    if student.facility_note():
+                        kura_listesi.append(student)
+                hak_kazananlar.extend(sample(kura_listesi, k=sinif_kontenjanlari[grade]))
+            else:
+                hak_kazananlar.extend(students[:sinif_kontenjanlari[grade]])
+                sinif_kontenjanlari[grade] = 0
+        except IndexError:
+            hak_kazananlar.extend(students)
 
     hak_kazananlar = sorted(hak_kazananlar, key=lambda i: i.grade)
-    return hak_kazananlar
+    new_grade_list = create_grade_list(hak_kazananlar)
+
+    for grade, students in new_grade_list.items():
+        for student in students[:hak]:
+            student.isSpare = False
+        for student in students[hak:]:
+            student.isSpare = True
+        new_grade_list[grade] = sorted(students, key=lambda i: i.isSpare)
+
+    return new_grade_list
 
 
 def save_to_excel(grade_list: dict):
@@ -146,6 +160,8 @@ def save_to_excel(grade_list: dict):
             sheet[f"B{num}"] = student.name
             sheet[f"C{num}"] = student.parent_name
             sheet[f"D{num}"] = student.parent_number
-            sheet[f"F{num}"] = student.school
+            sheet[f"E{num}"] = student.school
+            if student.isSpare:
+                sheet[f"F{num}"] = "YEDEK"
     timestr = time.strftime("%Y%m%d-%H%M%S")
     wb.save(f"sonuclar{timestr}.xlsx")

@@ -1,4 +1,5 @@
 import sys
+from random import shuffle
 
 from PyQt5 import QtWidgets, uic
 from PyQt5.QtCore import QTimer
@@ -6,7 +7,6 @@ from PyQt5.QtGui import QMovie
 from PyQt5.QtWidgets import QFileDialog
 
 import draw_students
-from random import shuffle
 
 
 class Ui(QtWidgets.QMainWindow):
@@ -72,17 +72,24 @@ class Ui(QtWidgets.QMainWindow):
 
     def draw_to_list(self):
         self.gif_label.clear()
-        students_list = draw_students.draw_students_from_excel(self.filename)
-        self.grade_list = draw_students.create_grade_list(students_list)
-        draw_students.save_to_excel(self.grade_list)
-        self.create_list_view()
+        try:
+            print(self.filename)
+            self.grade_list = draw_students.draw_students_from_excel(self.filename)
+            draw_students.save_to_excel(self.grade_list)
+            self.create_list_view()
+        except Exception as e:
+            print(e)
 
     def create_list_view(self):
         if self.counter <= 7:
             self.text_dict[str(self.counter)].setVisible(True)
             self.liste_dict[str(self.counter)].setVisible(True)
             shuffle(self.grade_list[str(self.counter)])
-            for student in self.grade_list[str(self.counter)]:
+
+            students = self.grade_list[str(self.counter)]
+            students = sorted(students, key=lambda i: i.isSpare)
+            for student in students:
+                print(student.isSpare)
                 self.liste_dict[str(self.counter)].addItem(student.to_text())
             self.counter += 1
             QTimer.singleShot(4000, self.create_list_view)
@@ -90,5 +97,8 @@ class Ui(QtWidgets.QMainWindow):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    window = Ui()
+    try:
+        window = Ui()
+    except:
+        app.exec_()
     app.exec_()
